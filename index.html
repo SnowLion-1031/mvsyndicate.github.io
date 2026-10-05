@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MV SYNDICATE — Select</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/TextPlugin.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{ --bg:#050505; }
+  *{ box-sizing:border-box; }
+  html,body{ background:var(--bg); }
+  body{
+    font-family:'Space Grotesk', sans-serif;
+    background: radial-gradient(ellipse 70% 55% at 50% 34%, rgba(255,255,255,0.05), transparent 65%), #050505;
+    color:#f2f2f0;
+    overflow-x:hidden;
+  }
+  .font-display{ font-family:'Anton', sans-serif; letter-spacing:0.01em; }
+  .font-mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ---- cursor-glow on lines, site-wide ---- */
+  .glow-line{ position:relative; color:rgba(255,255,255,0.55); transition:color .3s ease; }
+  .glow-line .glow-overlay{
+    position:absolute; inset:-6px; pointer-events:none;
+    background: radial-gradient(110px circle at var(--gx,50%) var(--gy,50%), rgba(255,255,255,0.95), transparent 70%);
+    mix-blend-mode: screen; opacity:0; transition: opacity .25s ease;
+  }
+  .glow-line.glow-active .glow-overlay{ opacity:1; }
+  .glow-line.glow-active{ color:rgba(255,255,255,0.85); }
+  .glow-text{ position:relative; display:inline-block; }
+  .glow-text .glow-overlay{ background: radial-gradient(160px circle at var(--gx,50%) var(--gy,50%), rgba(255,255,255,1), transparent 70%); mix-blend-mode: screen; }
+
+  .hairline{ background:rgba(255,255,255,0.14); }
+  input:focus-visible, button:focus-visible, a:focus-visible{ outline:2px solid rgba(255,255,255,0.8); outline-offset:3px; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.15); border-radius:8px; }
+
+  /* ---------------- ROOM STAGE ---------------- */
+  .room-stage{ position:relative; height:56vh; min-height:380px; display:flex; align-items:center; justify-content:center; }
+  .floor-ring{
+    position:absolute; left:50%; bottom:6%; width:min(70vw, 620px); height:90px;
+    transform:translateX(-50%); border-radius:50%; border:1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 0 60px 10px rgba(255,255,255,0.03) inset; pointer-events:none;
+  }
+  .room-vignette{ position:absolute; inset:0; background: radial-gradient(ellipse 55% 60% at 50% 45%, transparent 55%, rgba(0,0,0,0.55) 100%); pointer-events:none; }
+  .side-tick{ position:absolute; top:50%; width:1px; height:120px; background:linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent); transform:translateY(-50%); pointer-events:none; }
+
+  .portrait-perspective{ position:relative; width:min(58vw, 340px); height:100%; perspective:1300px; }
+  .portrait-layer{
+    position:absolute; inset:0; margin:auto; max-width:100%; max-height:100%; object-fit:contain;
+    filter: grayscale(1) contrast(1.05) drop-shadow(0 30px 40px rgba(0,0,0,0.55));
+    will-change: transform, opacity, filter; user-select:none; -webkit-user-drag:none;
+  }
+
+  .arrow-btn{
+    position:relative; z-index:20; height:50px; width:50px; display:flex; align-items:center; justify-content:center;
+    border-radius:9999px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.03);
+    backdrop-filter: blur(4px); transition: border-color .25s ease, background .25s ease, transform .25s ease; flex-shrink:0;
+  }
+  .arrow-btn:hover{ border-color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.08); transform:scale(1.06); }
+  .arrow-btn:active{ transform:scale(0.94); }
+
+  .thumb-dot{ transition: background .3s ease, transform .3s ease; }
+
+  /* ---------------- PARALLAX WRAPPERS ---------------- */
+  .parallax-host{ perspective:900px; }
+  .parallax-target{ transform-style:preserve-3d; will-change:transform; }
+
+  /* ---------------- TAB BAR ---------------- */
+  .tab-btn, .child-tab-btn{ background:none; padding-bottom:6px; cursor:pointer; }
+  .tab-btn.is-active, .child-tab-btn.is-active{ color:rgba(255,255,255,0.95); border-color:rgba(255,255,255,0.85) !important; }
+
+  /* ---------------- WORK CARDS ---------------- */
+  .work-card{ position:relative; }
+  .work-card:hover .work-icon{ opacity:0.85; transform:translateY(-2px); }
+  .work-icon{ transition: opacity .3s ease, transform .3s ease; }
+
+  /* ---------------- ARCHIVE WALL ---------------- */
+  .archive-viewport{
+    position:relative; width:100%; max-width:1200px; height:56vh; min-height:380px;
+    overflow:hidden;
+  }
+  .archive-wall{
+    position:absolute; top:-8%; left:-8%; width:120%; height:130%;
+    display:grid; grid-template-columns:repeat(6, 1fr); gap:18px; padding:30px;
+    will-change:transform;
+  }
+  .archive-frame{
+    border:2px solid rgba(255,255,255,0.16); border-radius:4px; aspect-ratio:4/3;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    background:rgba(255,255,255,0.02); transition: border-color .25s ease, transform .25s ease, background .25s ease;
+  }
+  .archive-frame:hover{ border-color:rgba(255,255,255,0.75); background:rgba(255,255,255,0.05); transform:translateY(-3px); }
+
+  #lightbox{ background:rgba(0,0,0,0.92); backdrop-filter: blur(6px); }
+
+  /* ---------------- CURSOR FLASHLIGHT ---------------- */
+  #cursor-flashlight{
+    position:fixed; top:0; left:0; width:380px; height:380px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.05) 38%, transparent 70%);
+    filter: blur(4px);
+    pointer-events:none; z-index:45; mix-blend-mode:screen; will-change:transform;
+  }
+  @media (hover:none){ #cursor-flashlight{ display:none; } }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; }
+  }
+  @media (max-width:768px){
+    .archive-wall{ grid-template-columns:repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body class="min-h-screen relative">
+<div id="cursor-flashlight"></div>
+
+<!-- ================= NAV ================= -->
+<header class="fixed top-0 inset-x-0 z-40 backdrop-blur-md bg-black/50 border-b border-white/10">
+  <div class="max-w-[1300px] mx-auto px-5 md:px-8 h-16 flex items-center justify-between">
+    <h1 class="glow-text glow-line font-display text-xl md:text-2xl tracking-[0.1em] text-white cursor-default select-none" data-glow>
+      <span class="glow-overlay"></span><span>MV SYNDICATE</span>
+    </h1>
+
+    <button id="audio-toggle" aria-pressed="false" aria-label="Toggle interface sound" class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.15em] text-white/50 hover:text-white transition-colors group">
+      <span class="hidden sm:inline">SFX</span>
+      <span class="relative flex h-7 w-7 items-center justify-center rounded-full border border-white/15 group-hover:border-white/40">
+        <svg id="audio-icon-on" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg>
+        <svg id="audio-icon-off" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 5V4L8 9H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>
+      </span>
+    </button>
+  </div>
+</header>
+
+<!-- ================= MAIN ================= -->
+<main id="select" class="relative min-h-screen pt-16 flex flex-col items-center justify-center pb-6">
+
+  <!-- ============ STAGE VIEW (Synopsis / Skills / Contact) ============ -->
+  <div id="stage-view" class="w-full flex-1 flex flex-col items-center justify-center gap-2">
+
+    <div id="stage-inner" class="w-full flex flex-col items-center gap-6">
+      <div class="font-mono text-[11px] tracking-[0.2em] text-white/35 flex items-center gap-3 w-full max-w-xs mx-auto">
+        <span>FILE</span>
+        <span id="file-no" class="text-white/80">01</span>
+        <span class="h-px flex-1 hairline"></span>
+        <span id="pager-current" class="text-white/80">01</span><span class="text-white/30">/</span><span id="pager-total" class="text-white/30">02</span>
+      </div>
+
+      <!-- ROOM STAGE: character centered, arrows beside it -->
+      <div class="room-stage w-full max-w-4xl mx-auto px-4">
+        <div class="room-vignette"></div>
+        <div class="floor-ring"></div>
+        <div class="side-tick" style="left:12%"></div>
+        <div class="side-tick" style="right:12%"></div>
+
+        <div class="flex items-center justify-center gap-4 md:gap-10 w-full h-full">
+          <button id="btn-prev" class="arrow-btn" aria-label="Previous character">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="portrait-perspective">
+            <img id="portrait-a" class="portrait-layer" draggable="false" alt="" />
+            <img id="portrait-b" class="portrait-layer" draggable="false" alt="" style="opacity:0" />
+          </div>
+          <button id="btn-next" class="arrow-btn" aria-label="Next character">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- TEXT PANEL -->
+      <div class="w-full max-w-xl mx-auto px-6 text-center flex flex-col items-center gap-3 parallax-host">
+        <p id="char-subtitle" class="glow-line font-mono text-xs uppercase tracking-[0.25em]" data-glow><span class="glow-overlay"></span></p>
+        <h1 id="char-name" class="glow-text font-display text-[13vw] leading-[0.85] sm:text-6xl md:text-7xl text-white" data-glow><span class="glow-overlay"></span><span class="glow-label"></span></h1>
+
+        <!-- dynamic per-tab content (Synopsis / Skills / Contact) -->
+        <div id="panel-content" class="parallax-target w-full flex flex-col items-center gap-3 pt-1 min-h-[110px]"></div>
+
+        <div class="flex items-center gap-3 pt-1">
+          <button class="thumb-dot h-2.5 w-2.5 rounded-full bg-white" data-index="0" aria-label="Character 1"></button>
+          <button class="thumb-dot h-2.5 w-2.5 rounded-full bg-white/25" data-index="1" aria-label="Character 2"></button>
+        </div>
+        <p class="glow-line font-mono text-[10px] uppercase tracking-[0.2em] text-white/30 pt-1" data-glow><span class="glow-overlay"></span><span>Use ← → to walk around the room</span></p>
+      </div>
+    </div>
+
+    <!-- inline tab bar slot: sits directly below the character panel -->
+    <div id="tab-slot-inline" class="w-full flex justify-center pt-8 pb-2"></div>
+  </div>
+
+  <!-- ============ WORKS VIEW ============ -->
+  <div id="works-view" class="hidden w-full flex-1 flex-col items-center justify-center gap-8 pt-2 pb-16">
+    <div class="text-center">
+      <p class="glow-line font-mono text-[11px] uppercase tracking-[0.25em] text-white/40" data-glow><span class="glow-overlay"></span><span>Portfolio — </span><span id="works-char-name">VANTAGE</span></p>
+    </div>
+    <div id="works-child-tabs" class="flex flex-wrap justify-center gap-6 md:gap-10 font-mono text-[10px] uppercase tracking-[0.22em]"></div>
+    <div class="parallax-host w-full max-w-5xl mx-auto px-6">
+      <div id="works-content" class="parallax-target relative w-full min-h-[300px]"></div>
+    </div>
+  </div>
+
+  <!-- ============ ARCHIVES VIEW ============ -->
+  <div id="archives-view" class="hidden w-full flex-1 flex-col items-center justify-center gap-6 pt-2 pb-16 px-4">
+    <p class="glow-line font-mono text-[11px] uppercase tracking-[0.25em] text-white/40 text-center" data-glow><span class="glow-overlay"></span><span>The Archive Wall — move your cursor to look around</span></p>
+    <div class="archive-viewport">
+      <div id="archive-wall" class="archive-wall"></div>
+    </div>
+  </div>
+
+  <!-- docked tab bar slot: fixed to the bottom for Works / Archives -->
+  <div id="tab-slot-docked" class="hidden fixed bottom-5 inset-x-0 z-30 justify-center px-4"></div>
+</main>
+
+<!-- ================= SHARED TAB BAR (relocated between slots via JS) ================= -->
+<nav id="tab-bar" class="flex flex-wrap justify-center gap-6 md:gap-10 font-mono text-[11px] uppercase tracking-[0.22em] bg-black/40 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none px-4 py-2 rounded-full md:rounded-none border border-white/10 md:border-0">
+  <button data-tab="synopsis" class="tab-btn glow-line is-active border-b-2 border-white" data-glow><span class="glow-overlay"></span><span>Synopsis</span></button>
+  <button data-tab="works" class="tab-btn glow-line border-b-2 border-transparent" data-glow><span class="glow-overlay"></span><span>Works</span></button>
+  <button data-tab="archives" class="tab-btn glow-line border-b-2 border-transparent" data-glow><span class="glow-overlay"></span><span>Archives</span></button>
+  <button data-tab="skills" class="tab-btn glow-line border-b-2 border-transparent" data-glow><span class="glow-overlay"></span><span>Skills</span></button>
+  <button data-tab="contact" class="tab-btn glow-line border-b-2 border-transparent" data-glow><span class="glow-overlay"></span><span>Contact</span></button>
+</nav>
+
+<section id="about" class="border-t border-white/10 py-14 px-5 md:px-8">
+  <div class="max-w-[1300px] mx-auto">
+    <p class="glow-line font-mono text-[11px] uppercase tracking-[0.25em] text-white/40" data-glow><span class="glow-overlay"></span><span>MV Syndicate — a two-file operative registry. Swap portraits for your own transparent PNGs to complete the roster.</span></p>
+  </div>
+</section>
+
+<!-- ================= LIGHTBOX ================= -->
+<div id="lightbox" class="hidden fixed inset-0 z-50 items-center justify-center p-6">
+  <button id="lightbox-close" aria-label="Close" class="absolute top-6 right-6 h-10 w-10 rounded-full border border-white/20 hover:border-white/70 flex items-center justify-center transition-colors">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+  </button>
+  <div id="lightbox-content" class="w-full max-w-2xl"></div>
+</div>
+
+<script>
+/* =========================================================
+   ICONS — small monochrome inline SVGs used across cards
+========================================================= */
+const ICONS = {
+  image: `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5.5-5.5a2 2 0 00-2.8 0L4 19"/></svg>`,
+  video: `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M17 9.5l4-2.5v10l-4-2.5"/></svg>`,
+  webdev: `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/></svg>`,
+  ig: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1"/></svg>`,
+  discord: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 9c2.5-1 5.5-1 8 0M7 15c3 1.2 7 1.2 10 0"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 6.5C6 7.2 4.8 8.7 4.4 10.6c-.6 2.8-.6 5.6 0 7.9 1 .9 2.2 1.5 3.6 1.9l.9-1.7M16 6.5c2 .7 3.2 2.2 3.6 4.1.6 2.8.6 5.6 0 7.9-1 .9-2.2 1.5-3.6 1.9l-.9-1.7"/></svg>`,
+  mail: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M4 6l8 7 8-7"/></svg>`,
+  phone: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h3l1.5 4.5-2 1.5a12 12 0 006 6l1.5-2L20 15v3a2 2 0 01-2 2C10.8 20 4 13.2 4 5a2 2 0 012-2z"/></svg>`
+};
+
+/* =========================================================
+   CHARACTER DATA
+   Replace "image" with your own transparent PNG filenames.
+   Each work item now takes a "url" — set it to:
+     - an image path/link (.png/.jpg/.webp/...) to preview it full-size
+     - a video path (.mp4/.webm) or a YouTube/Vimeo link to play it inline
+     - any other link (e.g. a live site) for Web Development — it opens in a new tab
+   Leave "url" empty to show a placeholder until you have a real link.
+========================================================= */
+const CHARACTERS = [
+  {
+    id: "vantage",
+    name: "VIKRAM",
+    subtitle: "Jack Of All Trades",
+    synopsis: "A 17-year-old commerce student with a mind split between business and technology begins building his own path long before most people his age have figured out theirs. With a growing knowledge of coding, web development, AI tools, digital services, and entrepreneurship, he turns curiosity into projects and ideas into experiments. Between academics, fitness, music, game development, and creative work, he is slowly assembling the skills that could define his future. His biggest challenge isn't discovering what he can do—it's deciding just how far he can take it.",
+    skills: [
+      { name: "Computer Expertise", desc: "Got His First Pc At The Ripe Age Of 4 And Has Been Studying It Ever Since" },
+      { name: "Web Development", desc: "Makes Formal And Flashy Websites For Business Organizations And Interested Individuals Alike" },
+      { name: "Game Development", desc: "A Passion For Game Development, Working On His First True Game On GODOT Engine" },
+      { name: "Video/Image Editing", desc: "Skilled In Niche Video Editing & Colour Grading With Proficiency In Photo Grading" },
+      { name: "Music Creation", desc: "Knows To Make Beats In FL Studio & Plays Guitar" }
+    ],
+    contact: { instagram: "sn0w.fr", discord: "snowlion._.", gmail: "yuagelol@gmail.com", phone: "9744701182" },
+    works: {
+      images: [
+        { title: "The Essence Of Friendship", url: "friendship.png" },
+        { title: "Traditional Aura", url: "tradaura.jpeg" },
+        { title: "Comfort Of Solitude", url: "solitude.jpg" },
+        { title: "Synthwave Sky", url: "synth.jpg" }
+      ],
+      videos: [
+        { title: "Aashiqui 2 Edit", url: "aashique.mp4" },
+        { title: "Nirvana", url: "0705.mp4" },
+        { title: "Bound 2", url: "0919 (1)(1).mp4" }
+      ],
+      webdev: [
+        { title: "OG PortFolio", url: "https://snows-domain.netlify.app/" },
+        { title: "More Finished Projects To Be Uploaded Here Soon"}
+      
+      ]
+    },
+    image: "character-1.png"
+  },
+  {
+    id: "wraith",
+    name: "Madhav",
+    subtitle: "Veni Vidi Vici",
+    synopsis: "Driven by ambition. Defined by capability. Focused on results.A highly motivated and versatile individual who combines analytical precision, creative thinking, and a relentless drive to improve. Skilled in Accounting, Mathematics, Numerical Analysis, Data Management, Photography, Poster Designing, Video Editing, and E-book Writing. I approach challenges with confidence, turn ideas into action, and continuously push beyond limitations to create meaningful and measurable results.",
+    skills: [
+      { name: "Creative vision", desc: "Gets Bright Vivid Creative Ideas/Decisions." },
+      { name: "Poster Designing", desc: "Researched Into Trending And Complex Designs Such as Brutalism And Neo-Futurism." },
+      { name: "Data Management", desc: "Expert in Data Handling And Management. Well Proficient In SQL & Pandas." },
+      { name: "Accounting/Mathematics", desc: "Expert In Mathematics,Accounting And Skills That Require Critical Thinking And Logical Reasoning." }
+    ],
+    contact: { instagram: "mdhv.fr", discord: "rastorgamer2940", gmail: "lorem ipsum", phone: "xxxxxxxxxxxxxxxx" },
+    works: {
+      images: [
+        { title: "Coming Soon" }
+
+      ],
+      videos: [
+       { title: "Coming Soon" }
+      ],
+      webdev: [
+        { title: "Coming Soon" }
+      ]
+    },
+    image: "character-2.png"
+  }
+];
+
+const PLACEHOLDER_SVG = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <path d="M150 20 C200 20 225 70 220 120 C218 150 205 170 195 185 C240 205 265 250 268 320 L268 400 L32 400 L32 320 C35 250 60 205 105 185 C95 170 82 150 80 120 C75 70 100 20 150 20 Z" fill="url(#g)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+  <text x="150" y="410" text-anchor="middle" font-family="monospace" font-size="11" fill="rgba(255,255,255,0.4)">DROP PNG HERE</text>
+</svg>`);
+
+/* =========================================================
+   STATE
+========================================================= */
+let current = 0;
+let animating = false;      // character portrait mid-transition
+let switching = false;      // main tab mid-transition
+let soundOn = false;
+let frontKey = 'a';
+let activeTab = 'synopsis';
+let activeWorksChild = 'images';
+let worksFrontKey = 'a';
+let archiveBuilt = false;
+
+const STAGE_TABS = ['synopsis', 'skills', 'contact'];
+
+/* =========================================================
+   DOM REFS
+========================================================= */
+const layers = { a: document.getElementById('portrait-a'), b: document.getElementById('portrait-b') };
+const nameEl = document.getElementById('char-name');
+const nameLabel = nameEl.querySelector('.glow-label');
+const subtitleEl = document.getElementById('char-subtitle');
+const panelContent = document.getElementById('panel-content');
+const fileNoEl = document.getElementById('file-no');
+const pagerCurrent = document.getElementById('pager-current');
+const pagerTotal = document.getElementById('pager-total');
+const dots = document.querySelectorAll('.thumb-dot');
+const stageInner = document.getElementById('stage-inner');
+const tabBarEl = document.getElementById('tab-bar');
+const tabSlotInline = document.getElementById('tab-slot-inline');
+const tabSlotDocked = document.getElementById('tab-slot-docked');
+const worksView = document.getElementById('works-view');
+const archivesView = document.getElementById('archives-view');
+const worksChildTabsEl = document.getElementById('works-child-tabs');
+const worksContentEl = document.getElementById('works-content');
+const worksCharNameEl = document.getElementById('works-char-name');
+const archiveWallEl = document.getElementById('archive-wall');
+const lightbox = document.getElementById('lightbox');
+const lightboxContent = document.getElementById('lightbox-content');
+
+pagerTotal.textContent = String(CHARACTERS.length).padStart(2, '0');
+tabSlotInline.appendChild(tabBarEl); // tab bar starts inline, below the character
+
+/* =========================================================
+   PORTRAIT (character stage) — unchanged room-carousel logic
+========================================================= */
+function setImgSrc(el, char){
+  el.onerror = () => { el.onerror = null; el.src = PLACEHOLDER_SVG; };
+  el.src = char.image;
+  el.alt = char.name;
+}
+
+function renderPanelContent(tab, char){
+  panelContent.innerHTML = '';
+  if (tab === 'synopsis'){
+    const p = document.createElement('p');
+    p.className = 'glow-line text-white/55 text-sm leading-relaxed max-w-md';
+    p.setAttribute('data-glow', '');
+    p.innerHTML = '<span class="glow-overlay"></span><span>' + char.synopsis + '</span>';
+    panelContent.appendChild(p);
+  } else if (tab === 'skills'){
+    const label = document.createElement('p');
+    label.className = 'font-mono text-[10px] uppercase tracking-[0.25em] text-white/35';
+    label.textContent = 'Special Skills';
+    panelContent.appendChild(label);
+    const ul = document.createElement('ul');
+    ul.className = 'flex flex-col gap-2 max-w-md w-full';
+    char.skills.forEach((s) => {
+      const li = document.createElement('li');
+      li.className = 'glow-line text-left text-sm';
+      li.setAttribute('data-glow', '');
+      li.innerHTML = `<span class="glow-overlay"></span><span class="text-white/85 font-medium">${s.name}</span> <span class="text-white/45">— ${s.desc}</span>`;
+      ul.appendChild(li);
+    });
+    panelContent.appendChild(ul);
+  } else if (tab === 'contact'){
+    const label = document.createElement('p');
+    label.className = 'font-mono text-[10px] uppercase tracking-[0.25em] text-white/35';
+    label.textContent = 'Contact';
+    panelContent.appendChild(label);
+    const rows = [
+      ['ig', 'Instagram', char.contact.instagram],
+      ['discord', 'Discord', char.contact.discord],
+      ['mail', 'Email', char.contact.gmail],
+      ['phone', 'Phone', char.contact.phone]
+    ];
+    const wrap = document.createElement('div');
+    wrap.className = 'flex flex-col gap-2 max-w-xs w-full';
+    rows.forEach(([icon, label2, value]) => {
+      const row = document.createElement('div');
+      row.className = 'glow-line flex items-center justify-center gap-3 text-sm';
+      row.setAttribute('data-glow', '');
+      row.innerHTML = `<span class="glow-overlay"></span><span class="text-white/40">${ICONS[icon]}</span><span class="text-white/40 w-16 text-left font-mono text-[10px] uppercase tracking-widest">${label2}</span><span class="text-white/80">${value}</span>`;
+      wrap.appendChild(row);
+    });
+    panelContent.appendChild(wrap);
+  }
+  attachGlow();
+}
+
+function renderStatic(char, tab){
+  fileNoEl.textContent = String(current + 1).padStart(2, '0');
+  subtitleEl.innerHTML = '<span class="glow-overlay"></span><span>' + char.subtitle + '</span>';
+  nameLabel.textContent = char.name;
+  renderPanelContent(tab, char);
+  dots.forEach((d, i) => {
+    d.classList.toggle('bg-white', i === current);
+    d.classList.toggle('bg-white/25', i !== current);
+  });
+}
+
+function initRender(){
+  const char = CHARACTERS[current];
+  setImgSrc(layers[frontKey], char);
+  gsap.set(layers[frontKey], { x: 0, z: 0, scale: 1, rotateY: 0, opacity: 1, zIndex: 2, filter: 'grayscale(1) contrast(1.05) blur(0px) drop-shadow(0 30px 40px rgba(0,0,0,0.55))' });
+  gsap.set(layers[frontKey === 'a' ? 'b' : 'a'], { opacity: 0, zIndex: 1 });
+  renderStatic(char, activeTab);
+  pagerCurrent.textContent = String(current + 1).padStart(2, '0');
+  attachGlow();
+
+  gsap.to(layers[frontKey], { y: '+=10', rotateY: 2, duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+  gsap.fromTo(['#char-name', '#char-subtitle', '#panel-content'],
+    { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.8, stagger: 0.06, ease: 'power3.out' });
+}
+
+function goToCharacter(index, dir){
+  if (animating || index === current) return;
+  animating = true;
+
+  const outEl = layers[frontKey];
+  const inKey = frontKey === 'a' ? 'b' : 'a';
+  const inEl = layers[inKey];
+  const incoming = CHARACTERS[index];
+
+  gsap.killTweensOf(outEl);
+  gsap.killTweensOf(inEl);
+  setImgSrc(inEl, incoming);
+
+  gsap.set(inEl, { zIndex: 2 });
+  gsap.set(outEl, { zIndex: 1 });
+  gsap.set(inEl, {
+    x: dir > 0 ? '42%' : '-42%', z: -260, scale: 0.55, rotateY: dir > 0 ? -34 : 34, opacity: 0,
+    filter: 'grayscale(1) contrast(0.95) blur(7px) brightness(0.4) drop-shadow(none)'
+  });
+
+  const tl = gsap.timeline({
+    defaults: { duration: 0.95, ease: 'power3.inOut' },
+    onComplete: () => {
+      current = index;
+      frontKey = inKey;
+      pagerCurrent.textContent = String(current + 1).padStart(2, '0');
+      gsap.to(inEl, { y: '+=10', rotateY: 2, duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to(outEl, { rotateY: (dir > 0 ? 34 : -34) + 3, duration: 5.5, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      animating = false;
+    }
+  });
+
+  tl.to(outEl, {
+    x: dir > 0 ? '-42%' : '42%', z: -260, scale: 0.55, rotateY: dir > 0 ? 34 : -34, opacity: 0.22,
+    filter: 'grayscale(1) contrast(0.95) blur(7px) brightness(0.4) drop-shadow(none)'
+  }, 0);
+  tl.to(inEl, {
+    x: 0, z: 0, scale: 1, rotateY: 0, opacity: 1,
+    filter: 'grayscale(1) contrast(1.05) blur(0px) brightness(1) drop-shadow(0 30px 40px rgba(0,0,0,0.55))'
+  }, 0.08);
+
+  tl.to(['#char-subtitle', '#panel-content'], { opacity: 0, y: -8, duration: 0.3, stagger: 0.02, ease: 'power2.in' }, 0);
+  tl.call(() => {
+    renderStatic(incoming, activeTab);
+    gsap.set(['#char-subtitle', '#panel-content'], { y: 8 });
+    nameLabel.textContent = '';
+    gsap.to(nameLabel, { duration: 0.5, text: incoming.name, ease: 'none' });
+  }, null, 0.32);
+  tl.to(['#char-subtitle', '#panel-content'], { opacity: 1, y: 0, duration: 0.55, stagger: 0.05, ease: 'power3.out' }, 0.4);
+
+  if (soundOn) playBlip();
+}
+
+function nextChar(){ if (lightboxOpen()) return; goToCharacter((current + 1) % CHARACTERS.length, 1); }
+function prevChar(){ if (lightboxOpen()) return; goToCharacter((current - 1 + CHARACTERS.length) % CHARACTERS.length, -1); }
+
+document.getElementById('btn-next').addEventListener('click', nextChar);
+document.getElementById('btn-prev').addEventListener('click', prevChar);
+dots.forEach((d) => d.addEventListener('click', () => {
+  const idx = parseInt(d.dataset.index, 10);
+  if (idx === current) return;
+  goToCharacter(idx, idx > current ? 1 : -1);
+}));
+
+let touchStartX = null;
+document.getElementById('stage-view').addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+document.getElementById('stage-view').addEventListener('touchend', (e) => {
+  if (touchStartX === null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) { dx < 0 ? nextChar() : prevChar(); }
+  touchStartX = null;
+});
+
+/* =========================================================
+   GENERIC CROSSFADE-SWAP — same visual recipe as the
+   character room-carousel, reused for the Works child tabs
+========================================================= */
+function crossFadeSwap(outEl, inEl, dir, onComplete){
+  gsap.killTweensOf([outEl, inEl]);
+  gsap.set(inEl, { zIndex: 2 });
+  gsap.set(outEl, { zIndex: 1 });
+  gsap.set(inEl, {
+    x: dir > 0 ? '42%' : '-42%', z: -260, scale: 0.6, rotateY: dir > 0 ? -30 : 30, opacity: 0,
+    filter: 'grayscale(1) blur(6px) brightness(0.4)'
+  });
+  const tl = gsap.timeline({ defaults: { duration: 0.8, ease: 'power3.inOut' }, onComplete });
+  tl.to(outEl, {
+    x: dir > 0 ? '-42%' : '42%', z: -260, scale: 0.6, rotateY: dir > 0 ? 30 : -30, opacity: 0,
+    filter: 'grayscale(1) blur(6px) brightness(0.4)'
+  }, 0);
+  tl.to(inEl, { x: 0, z: 0, scale: 1, rotateY: 0, opacity: 1, filter: 'grayscale(1) blur(0px) brightness(1)' }, 0.05);
+  return tl;
+}
+
+/* =========================================================
+   WORKS VIEW
+========================================================= */
+const WORKS_CATEGORIES = [
+  { key: 'images', label: 'Images & CC', icon: 'image' },
+  { key: 'videos', label: 'Videos', icon: 'video' },
+  { key: 'webdev', label: 'Web Development', icon: 'webdev' }
+];
+
+function buildWorksChildTabs(){
+  worksChildTabsEl.innerHTML = '';
+  WORKS_CATEGORIES.forEach((cat) => {
+    const btn = document.createElement('button');
+    btn.className = 'child-tab-btn glow-line border-b-2 ' + (cat.key === activeWorksChild ? 'is-active border-white' : 'border-transparent');
+    btn.dataset.child = cat.key;
+    btn.setAttribute('data-glow', '');
+    btn.innerHTML = `<span class="glow-overlay"></span><span>${cat.label}</span>`;
+    btn.addEventListener('click', () => switchWorksChild(cat.key));
+    worksChildTabsEl.appendChild(btn);
+  });
+  attachGlow();
+}
+
+function worksGridHTML(char, key, icon){
+  const items = char.works[key];
+
+  return `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      ${items.map((item, i) => `
+        <button
+          type="button"
+          class="work-card border border-white/15 rounded-lg aspect-[4/3] overflow-hidden relative bg-white/[0.02] hover:border-white/50 transition-colors text-center"
+          data-idx="${i}"
+          aria-label="Open ${item.title}"
+        >
+
+          <!-- MEDIA THUMBNAIL -->
+          <div
+            class="media-thumbnail absolute inset-0 overflow-hidden"
+            data-url="${item.url || ''}"
+            data-category="${key}"
+          >
+
+            <!-- Fallback icon -->
+            <span class="thumbnail-fallback absolute inset-0 flex items-center justify-center text-white/45">
+              ${ICONS[icon]}
+            </span>
+
+          </div>
+
+          <!-- Dark gradient -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none"></div>
+
+          <!-- Title -->
+          <div class="absolute bottom-0 left-0 right-0 p-3 z-10">
+            <span
+              class="glow-line font-mono text-[10px] uppercase tracking-widest text-white/70"
+              data-glow
+            >
+              <span class="glow-overlay"></span>
+              <span>${item.title}</span>
+            </span>
+          </div>
+
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+/* =========================================================
+   MEDIA THUMBNAILS
+   Images = actual image
+   Videos = random frame from video
+========================================================= */
+
+function loadImageThumbnail(container, url){
+  if (!url) return;
+
+  const img = document.createElement('img');
+
+  img.src = url;
+  img.alt = '';
+  img.className = `
+    absolute inset-0 w-full h-full object-cover
+    pointer-events-none
+  `;
+
+  img.onload = () => {
+    const fallback = container.querySelector('.thumbnail-fallback');
+    if (fallback) fallback.remove();
+
+    container.appendChild(img);
+  };
+}
+function loadVideoThumbnail(container, url){
+  const video = document.createElement('video');
+
+  video.src = url;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'metadata';
+  video.controls = false;
+
+  video.className =
+    'absolute inset-0 w-full h-full object-cover pointer-events-none';
+
+  video.addEventListener('loadedmetadata', () => {
+    if (!Number.isFinite(video.duration) || video.duration <= 0) {
+      return;
+    }
+
+    // Pick a random frame, avoiding the very beginning/end
+    const minTime = Math.min(0.5, video.duration * 0.1);
+    const maxTime = Math.max(minTime, video.duration - 0.5);
+
+    video.currentTime =
+      minTime + Math.random() * (maxTime - minTime);
+  });
+
+  video.addEventListener('seeked', () => {
+    video.pause();
+
+    const fallback =
+      container.querySelector('.thumbnail-fallback');
+
+    if (fallback) {
+      fallback.remove();
+    }
+
+    container.appendChild(video);
+  });
+
+  video.addEventListener('error', () => {
+    console.warn('Video thumbnail failed:', url);
+  });
+
+  video.load();
+}
+
+function loadMediaThumbnails(containerEl){
+  containerEl.querySelectorAll('.media-thumbnail').forEach((container) => {
+    const url = container.dataset.url;
+    const category = container.dataset.category;
+
+    if (!url) return;
+
+    const kind = detectMediaKind(url);
+
+    if (kind === 'image'){
+      loadImageThumbnail(container, url);
+    }
+    else if (kind === 'video'){
+      loadVideoThumbnail(container, url);
+    }
+  });
+}
+
+
+
+function wireWorkCards(containerEl, char, key){
+
+  // Generate the thumbnails
+  loadMediaThumbnails(containerEl);
+
+  containerEl.querySelectorAll('.work-card').forEach((btn) => {
+
+    const idx = parseInt(btn.dataset.idx, 10);
+
+    btn.addEventListener('click', () => {
+      openWorkItem(
+        char.works[key][idx],
+        key,
+        char
+      );
+    });
+
+  });
+}
+
+function ensureWorksLayers(){
+  if (!worksContentEl.querySelector('.works-layer')){
+    const a = document.createElement('div');
+    a.className = 'works-layer absolute inset-0';
+    a.dataset.key = 'a';
+    const b = document.createElement('div');
+    b.className = 'works-layer absolute inset-0';
+    b.dataset.key = 'b';
+    gsap.set(b, { opacity: 0 });
+    worksContentEl.appendChild(a);
+    worksContentEl.appendChild(b);
+  }
+  return {
+    a: worksContentEl.querySelector('.works-layer[data-key="a"]'),
+    b: worksContentEl.querySelector('.works-layer[data-key="b"]')
+  };
+}
+
+function renderWorksView(){
+  const char = CHARACTERS[current];
+  worksCharNameEl.textContent = char.name;
+  buildWorksChildTabs();
+  const wl = ensureWorksLayers();
+  const cat = WORKS_CATEGORIES.find((c) => c.key === activeWorksChild);
+  wl[worksFrontKey].innerHTML = worksGridHTML(char, cat.key, cat.icon);
+  wireWorkCards(wl[worksFrontKey], char, cat.key);
+  gsap.set(wl[worksFrontKey], { x: 0, z: 0, scale: 1, rotateY: 0, opacity: 1, zIndex: 2 });
+  gsap.set(wl[worksFrontKey === 'a' ? 'b' : 'a'], { opacity: 0, zIndex: 1 });
+  attachGlow();
+}
+
+function switchWorksChild(key){
+  if (key === activeWorksChild) return;
+  const dir = WORKS_CATEGORIES.findIndex((c) => c.key === key) > WORKS_CATEGORIES.findIndex((c) => c.key === activeWorksChild) ? 1 : -1;
+  activeWorksChild = key;
+  buildWorksChildTabs();
+
+  const wl = ensureWorksLayers();
+  const outEl = wl[worksFrontKey];
+  const inKey = worksFrontKey === 'a' ? 'b' : 'a';
+  const inEl = wl[inKey];
+  const char = CHARACTERS[current];
+  const cat = WORKS_CATEGORIES.find((c) => c.key === key);
+  inEl.innerHTML = worksGridHTML(char, cat.key, cat.icon);
+  wireWorkCards(inEl, char, cat.key);
+  attachGlow();
+
+  crossFadeSwap(outEl, inEl, dir, () => { worksFrontKey = inKey; });
+}
+
+/* =========================================================
+   ARCHIVES VIEW — wall of frames with mouse parallax + lightbox
+========================================================= */
+function buildArchiveItems(){
+  const items = [];
+  CHARACTERS.forEach((char) => {
+    WORKS_CATEGORIES.forEach((cat) => {
+      char.works[cat.key].forEach((item) => {
+        items.push({ character: char.name, type: cat.label, icon: cat.icon, category: cat.key, title: item.title, url: item.url });
+      });
+    });
+  });
+  return items;
+}
+
+function renderArchiveWall(){
+  if (archiveBuilt) return;
+  const items = buildArchiveItems();
+  archiveWallEl.innerHTML = items.map((item, i) => `
+    <button class="archive-frame" data-idx="${i}" aria-label="Open ${item.title}">
+      <span class="text-white/40">${ICONS[item.icon]}</span>
+      <span class="glow-line font-mono text-[9px] uppercase tracking-widest text-white/45 text-center px-2" data-glow><span class="glow-overlay"></span><span>${item.title}</span></span>
+    </button>`).join('');
+
+  archiveWallEl.querySelectorAll('.archive-frame').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = items[parseInt(btn.dataset.idx, 10)];
+      openWorkItem({ title: item.title, url: item.url }, item.category, { name: item.character });
+    });
+  });
+  attachGlow();
+  attachWallParallax();
+  archiveBuilt = true;
+}
+
+function attachWallParallax(){
+  const viewport = document.querySelector('.archive-viewport');
+  const strength = 55;
+  const qx = gsap.quickTo(archiveWallEl, 'x', { duration: 0.9, ease: 'power3.out' });
+  const qy = gsap.quickTo(archiveWallEl, 'y', { duration: 0.9, ease: 'power3.out' });
+  viewport.addEventListener('mousemove', (e) => {
+    const rect = viewport.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    qx(-nx * strength);
+    qy(-ny * strength * 0.6);
+  });
+  viewport.addEventListener('mouseleave', () => { qx(0); qy(0); });
+}
+
+/* =========================================================
+   WORK ITEM CLICKS — open the image / play the video / follow the link
+========================================================= */
+const CATEGORY_LABELS = { images: 'Images & CC', videos: 'Videos', webdev: 'Web Development' };
+
+function detectMediaKind(url){
+  const clean = url.split('?')[0].toLowerCase();
+  if (/\.(png|jpe?g|gif|webp|svg|avif)$/.test(clean)) return 'image';
+  if (/\.(mp4|webm|mov|m4v)$/.test(clean)) return 'video';
+  if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
+  if (/vimeo\.com/.test(url)) return 'vimeo';
+  return 'link';
+}
+function toYouTubeEmbed(url){
+  const m = url.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : url;
+}
+function toVimeoEmbed(url){
+  const m = url.match(/vimeo\.com\/(\d+)/);
+  return m ? `https://player.vimeo.com/video/${m[1]}` : url;
+}
+
+function openWorkItem(item, category, char){
+  const url = (item.url || '').trim();
+
+  // Web Development items are links out to the live project — open directly in a new tab
+  if (category === 'webdev' && url){
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+
+  if (!url){
+    openLightboxPlaceholder(item, category, char);
+    return;
+  }
+  openLightboxMedia(url, category, item.title, char.name);
+}
+
+function openLightboxMedia(url, category, title, charName){
+  const kind = detectMediaKind(url);
+  let mediaHTML;
+  if (kind === 'image'){
+    mediaHTML = `<img src="${url}" alt="${title}" class="w-full max-h-[65vh] object-contain rounded-lg border border-white/10" />`;
+  } else if (kind === 'video'){
+    mediaHTML = `<video src="${url}" controls class="w-full max-h-[65vh] rounded-lg border border-white/10 bg-black"></video>`;
+  } else if (kind === 'youtube'){
+    mediaHTML = `<div class="w-full aspect-video"><iframe src="${toYouTubeEmbed(url)}" class="w-full h-full rounded-lg border border-white/10" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`;
+  } else if (kind === 'vimeo'){
+    mediaHTML = `<div class="w-full aspect-video"><iframe src="${toVimeoEmbed(url)}" class="w-full h-full rounded-lg border border-white/10" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+  } else {
+    mediaHTML = `
+      <div class="w-full aspect-video border border-white/20 rounded-lg flex items-center justify-center bg-white/[0.03] text-white/50">
+        ${ICONS[category === 'videos' ? 'video' : category === 'webdev' ? 'webdev' : 'image'].replace('width="30" height="30"', 'width="56" height="56"')}
+      </div>
+      <a href="${url}" target="_blank" rel="noopener" class="glow-line font-mono text-[11px] uppercase tracking-widest text-white/70 underline underline-offset-4" data-glow><span class="glow-overlay"></span><span>Open Link ↗</span></a>`;
+  }
+
+  lightboxContent.innerHTML = `
+    <div class="flex flex-col items-center gap-4 w-full">
+      ${mediaHTML}
+      <div class="text-center">
+        <p class="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">${charName} — ${CATEGORY_LABELS[category] || category}</p>
+        <h3 class="font-display text-2xl md:text-3xl mt-1 text-white">${title}</h3>
+      </div>
+    </div>`;
+  showLightboxShell();
+}
+
+function openLightboxPlaceholder(item, category, char){
+  lightboxContent.innerHTML = `
+    <div class="flex flex-col items-center gap-5">
+      <div class="w-full aspect-video border border-white/20 rounded-lg flex items-center justify-center bg-white/[0.03] text-white/50">
+        ${ICONS[category === 'videos' ? 'video' : category === 'webdev' ? 'webdev' : 'image'].replace('width="30" height="30"', 'width="64" height="64"')}
+      </div>
+      <div class="text-center">
+        <p class="font-mono text-[11px] uppercase tracking-[0.25em] text-white/40">${char.name} — ${CATEGORY_LABELS[category] || category}</p>
+        <h3 class="font-display text-2xl md:text-3xl mt-1 text-white">${item.title}</h3>
+        <p class="text-white/40 text-sm mt-3 max-w-sm mx-auto">More Work Cards On The Way</p>
+      </div>
+    </div>`;
+  showLightboxShell();
+}
+
+function showLightboxShell(){
+  lightbox.classList.remove('hidden');
+  lightbox.classList.add('flex');
+  gsap.fromTo(lightbox, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+  gsap.fromTo(lightboxContent, { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'power3.out' });
+  attachGlow();
+}
+
+function lightboxOpen(){ return !lightbox.classList.contains('hidden'); }
+
+function closeLightbox(){
+  if (!lightboxOpen()) return;
+  gsap.to(lightbox, { opacity: 0, duration: 0.25, onComplete: () => { lightbox.classList.add('hidden'); lightbox.classList.remove('flex'); } });
+}
+document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+
+
+/* =========================================================
+   TAB BAR — disintegrate / reassemble when relocating
+========================================================= */
+function setActiveTabButton(){
+  tabBarEl.querySelectorAll('.tab-btn').forEach((btn) => {
+    const on = btn.dataset.tab === activeTab;
+    btn.classList.toggle('is-active', on);
+    btn.classList.toggle('border-white', on);
+    btn.classList.toggle('border-transparent', !on);
+  });
+}
+
+function disintegrate(container, onComplete){
+  const btns = container.querySelectorAll('button');
+  gsap.to(btns, {
+    opacity: 0, scale: 0.35, filter: 'blur(6px)',
+    x: () => gsap.utils.random(-45, 45), y: () => gsap.utils.random(-35, 35), rotate: () => gsap.utils.random(-30, 30),
+    duration: 0.45, stagger: 0.025, ease: 'power2.in', onComplete
+  });
+}
+function reassemble(container, onComplete){
+  const btns = container.querySelectorAll('button');
+  gsap.set(btns, {
+    opacity: 0, scale: 0.35, filter: 'blur(6px)',
+    x: () => gsap.utils.random(-45, 45), y: () => gsap.utils.random(-35, 35), rotate: () => gsap.utils.random(-30, 30)
+  });
+  gsap.to(btns, { opacity: 1, scale: 1, filter: 'blur(0px)', x: 0, y: 0, rotate: 0, duration: 0.55, stagger: 0.035, ease: 'power3.out', onComplete });
+}
+
+function moveTabBar(toDocked, cb){
+  disintegrate(tabBarEl, () => {
+    if (toDocked){
+      tabSlotDocked.classList.remove('hidden');
+      tabSlotDocked.classList.add('flex');
+      tabSlotDocked.appendChild(tabBarEl);
+      tabSlotInline.classList.add('hidden');
+    } else {
+      tabSlotInline.classList.remove('hidden');
+      tabSlotInline.appendChild(tabBarEl);
+      tabSlotDocked.classList.add('hidden');
+      tabSlotDocked.classList.remove('flex');
+    }
+    reassemble(tabBarEl, cb);
+  });
+}
+
+/* =========================================================
+   VIEW SWITCHERS
+========================================================= */
+function showView(el){ el.classList.remove('hidden'); el.classList.add('flex'); }
+function hideView(el){ el.classList.add('hidden'); el.classList.remove('flex'); }
+
+function fadeIn(el, cb){
+  gsap.fromTo(el, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.55, ease: 'power3.out', onComplete: cb });
+}
+function fadeOut(el, cb){
+  gsap.to(el, { opacity: 0, y: -10, duration: 0.4, ease: 'power2.in', onComplete: cb });
+}
+
+function fadeSwapPanel(tab, cb){
+  gsap.to(panelContent, {
+    opacity: 0, y: -8, duration: 0.28, ease: 'power2.in',
+    onComplete: () => {
+      renderPanelContent(tab, CHARACTERS[current]);
+      gsap.fromTo(panelContent, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', onComplete: cb });
+    }
+  });
+}
+
+function enterFullView(tab, cb){
+  if (tab === 'works'){
+    renderWorksView();
+    showView(worksView);
+    gsap.set(worksView, { opacity: 0, y: 12 });
+    fadeIn(worksView, cb);
+  } else if (tab === 'archives'){
+    renderArchiveWall();
+    showView(archivesView);
+    gsap.set(archivesView, { opacity: 0, y: 12 });
+    fadeIn(archivesView, cb);
+  }
+}
+
+function exitFullView(tab, cb){
+  const el = tab === 'works' ? worksView : archivesView;
+  fadeOut(el, () => { hideView(el); cb && cb(); });
+}
+
+function swapFullView(prev, next, cb){
+  const outEl = prev === 'works' ? worksView : archivesView;
+  const inEl = next === 'works' ? worksView : archivesView;
+  fadeOut(outEl, () => {
+    hideView(outEl);
+    if (next === 'works') renderWorksView(); else renderArchiveWall();
+    showView(inEl);
+    gsap.set(inEl, { opacity: 0, y: 12 });
+    fadeIn(inEl, cb);
+  });
+}
+
+function switchTab(tab){
+  if (tab === activeTab || switching) return;
+  switching = true;
+  const prev = activeTab;
+  const prevIsStage = STAGE_TABS.includes(prev);
+  const nextIsStage = STAGE_TABS.includes(tab);
+  activeTab = tab;
+  setActiveTabButton();
+
+  if (prevIsStage && nextIsStage){
+    fadeSwapPanel(tab, () => { switching = false; });
+  } else if (prevIsStage && !nextIsStage){
+    fadeOut(stageInner, () => {
+      stageInner.classList.add('hidden');
+      moveTabBar(true, () => {
+        enterFullView(tab, () => { switching = false; });
+      });
+    });
+  } else if (!prevIsStage && nextIsStage){
+    exitFullView(prev, () => {
+      moveTabBar(false, () => {
+        renderStatic(CHARACTERS[current], tab);
+        stageInner.classList.remove('hidden');
+        fadeIn(stageInner, () => { switching = false; });
+      });
+    });
+  } else {
+    swapFullView(prev, tab, () => { switching = false; });
+  }
+}
+
+tabBarEl.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+/* =========================================================
+   PARALLAX — subtle tilt on the active content panel
+========================================================= */
+function attachParallax(el, strength){
+  const qx = gsap.quickTo(el, 'rotateY', { duration: 0.6, ease: 'power3.out' });
+  const qy = gsap.quickTo(el, 'rotateX', { duration: 0.6, ease: 'power3.out' });
+  const qtx = gsap.quickTo(el, 'x', { duration: 0.6, ease: 'power3.out' });
+  const qty = gsap.quickTo(el, 'y', { duration: 0.6, ease: 'power3.out' });
+  window.addEventListener('mousemove', (e) => {
+    const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+    const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+    qx(nx * strength * 0.5);
+    qy(-ny * strength * 0.5);
+    qtx(nx * strength);
+    qty(ny * strength * 0.4);
+  });
+}
+attachParallax(panelContent, 6);
+attachParallax(worksContentEl, 5);
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+window.addEventListener('keydown', (e) => {
+  if (lightboxOpen()){
+    if (e.key === 'Escape') closeLightbox();
+    return;
+  }
+  if (!STAGE_TABS.includes(activeTab)) return;
+  if (e.key === 'ArrowRight') nextChar();
+  if (e.key === 'ArrowLeft') prevChar();
+});
+
+/* =========================================================
+   TEXT SCRAMBLE — decode-style effect on hover, per "sentence"
+========================================================= */
+const SCRAMBLE_CHARS = '!<>-_\\/[]{}—=+*^?#$%&01';
+
+function scrambleLeaf(el){
+  // Only trust the cached "original" while a scramble is actively mid-flight on this
+  // element (so a rapid re-hover doesn't corrupt it). Otherwise always read the current
+  // live text — this matters for nodes like the character name, whose text is updated
+  // in place elsewhere (e.g. by the typing effect on character switch).
+  const original = el._scrambling ? el.dataset.scrambleOriginal : el.textContent;
+  el.dataset.scrambleOriginal = original;
+  if (el._scrambleRAF) cancelAnimationFrame(el._scrambleRAF);
+  const n = original.length;
+  const queue = [];
+  for (let i = 0; i < n; i++){
+    queue.push({ start: Math.floor(Math.random() * 8), end: 8 + Math.floor(Math.random() * 16), char: '' });
+  }
+  let frame = 0;
+  el._scrambling = true;
+  function update(){
+    let out = '';
+    let done = 0;
+    for (let i = 0; i < n; i++){
+      const q = queue[i];
+      if (frame >= q.end){ out += original[i]; done++; }
+      else if (frame >= q.start){
+        if (!q.char || Math.random() < 0.32) q.char = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+        out += q.char;
+      } else {
+        out += original[i];
+      }
+    }
+    el.textContent = out;
+    if (done >= n){ el._scrambleRAF = null; el._scrambling = false; return; }
+    frame++;
+    el._scrambleRAF = requestAnimationFrame(update);
+  }
+  update();
+}
+
+function getScrambleLeaves(container){
+  const leaves = [];
+  function walk(node){
+    const children = Array.from(node.children || []).filter((c) => !c.classList.contains('glow-overlay'));
+    if (children.length === 0){
+      if (node.textContent && node.textContent.trim().length > 0) leaves.push(node);
+    } else {
+      children.forEach(walk);
+    }
+  }
+  walk(container);
+  return leaves;
+}
+
+function attachScramble(container){
+  if (container._scrambleBound) return;
+  container._scrambleBound = true;
+  container.addEventListener('mouseenter', () => {
+    getScrambleLeaves(container).forEach((leaf) => scrambleLeaf(leaf));
+  });
+}
+
+/* =========================================================
+   CURSOR GLOW ON LINES
+========================================================= */
+function attachGlow(){
+  document.querySelectorAll('[data-glow]').forEach((el) => {
+    attachScramble(el);
+    if (el._glowBound) return;
+    el._glowBound = true;
+    el.addEventListener('mousemove', (e) => {
+      const rect = el.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      el.style.setProperty('--gx', x + '%');
+      el.style.setProperty('--gy', y + '%');
+      el.classList.add('glow-active');
+    });
+    el.addEventListener('mouseleave', () => el.classList.remove('glow-active'));
+  });
+}
+
+/* =========================================================
+   CURSOR FLASHLIGHT — soft glow that follows the mouse
+========================================================= */
+const flashlightEl = document.getElementById('cursor-flashlight');
+if (flashlightEl){
+  gsap.set(flashlightEl, { xPercent: -50, yPercent: -50 });
+  const flx = gsap.quickTo(flashlightEl, 'x', { duration: 0.45, ease: 'power3.out' });
+  const fly = gsap.quickTo(flashlightEl, 'y', { duration: 0.45, ease: 'power3.out' });
+  window.addEventListener('mousemove', (e) => { flx(e.clientX); fly(e.clientY); });
+}
+
+/* =========================================================
+   AUDIO TOGGLE
+========================================================= */
+let audioCtx = null;
+function playBlip(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(480, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(160, audioCtx.currentTime + 0.18);
+    g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.2);
+  }catch(err){}
+}
+document.getElementById('audio-toggle').addEventListener('click', function(){
+  soundOn = !soundOn;
+  this.setAttribute('aria-pressed', String(soundOn));
+  document.getElementById('audio-icon-on').classList.toggle('hidden', !soundOn);
+  document.getElementById('audio-icon-off').classList.toggle('hidden', soundOn);
+  if (soundOn) playBlip();
+});
+
+/* =========================================================
+   INIT
+========================================================= */
+attachGlow();
+initRender();
+</script>
+</body>
+</html>
